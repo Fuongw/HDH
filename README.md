@@ -1,10 +1,15 @@
 # HDH
 ## THUẬT TOÁN MẪU:
 **FCFS**
+
 Nhap so tien trinh: 4
+
 Nhap burst time_thời gian xử lý cua tien trinh 1: 5
+
 Nhap burst time_thời gian xử lý cua tien trinh 2: 3
+
 Nhap burst time_thời gian xử lý cua tien trinh 3: 8
+
 Nhap burst time_thời gian xử lý cua tien trinh 4: 6
 
 **SJF**
