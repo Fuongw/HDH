@@ -1,5 +1,8 @@
 //SRTF
 #include <iostream>
+#include <iomanip> // For std::setw, std::fixed, std::setprecision
+#include <algorithm> // For std::min, std::max
+
 using namespace std;
 
 int main() {
@@ -7,65 +10,116 @@ int main() {
     cout << "Nhap so tien trinh: ";
     cin >> n;
 
-    int at[n], bt[n], rt[n], pid[n]; // arrival time, burst time, remaining time, process ID
-    int wt[n] = {0}, tat[n] = {0};
-    bool completed[n] = {false};
+    // Sử dụng mảng tĩnh. Lưu ý VLA (Variable Length Array) không phải C++ chuẩn.
+    // Đối với các dự án lớn hơn, nên dùng std::vector hoặc cấp phát động (new int[n]).
+    int pid[n];             // ID tiến trình
+    int arrivalTime[n];     // Thời gian đến
+    int burstTime[n];       // Thời gian xử lý ban đầu
+    int remainingTime[n];   // Thời gian còn lại chưa xử lý
 
+    // Các mảng kết quả
+    int completionTime[n];   // Thời điểm hoàn thành
+    int turnaroundTime[n];   // Thời gian lưu lại trong hệ thống
+    int waitingTime[n];      // Thời gian chờ đợi
+
+    // Trạng thái của tiến trình
+    bool isCompleted[n];    // Đánh dấu tiến trình đã hoàn thành
+
+    // Nhập thông tin cho từng tiến trình
     for (int i = 0; i < n; i++) {
         pid[i] = i + 1;
         cout << "Tien trinh " << pid[i] << " - Nhap arrival time va burst time: ";
-        cin >> at[i] >> bt[i];
-        rt[i] = bt[i]; // Ban đầu thời gian còn lại = burst time
+        cin >> arrivalTime[i] >> burstTime[i];
+        remainingTime[i] = burstTime[i]; // Ban đầu, thời gian còn lại = burst time
+        isCompleted[i] = false;         // Ban đầu, chưa tiến trình nào hoàn thành
     }
 
-    int complete = 0, time = 0, min_rt = 1e9, shortest = -1;
-    bool found = false;
+    // --- Thực thi thuật toán SRTF (Shortest Remaining Time First) ---
+    int currentTime = 0; // Thời gian hiện tại của CPU
+    int completedProcesses = 0; // Số tiến trình đã hoàn thành
 
-    while (complete < n) {
-        found = false;
+    // Biến để theo dõi tiến trình ngắn nhất đang được chọn
+    int shortestJobIndex = -1;
+    int minRemainingTime = 999999; // Giá trị đủ lớn để tìm min
 
-        // Tìm tiến trình có thời gian còn lại nhỏ nhất và đã đến
+    // Vòng lặp chính, tiếp tục cho đến khi tất cả các tiến trình hoàn thành
+    while (completedProcesses < n) {
+        // Reset minRemainingTime và shortestJobIndex ở mỗi bước thời gian
+        // để tìm tiến trình ưu tiên mới
+        minRemainingTime = 999999;
+        shortestJobIndex = -1;
+
+        // Bước 1: Tìm tiến trình có thời gian còn lại ngắn nhất
+        // trong số các tiến trình đã đến và chưa hoàn thành
         for (int i = 0; i < n; i++) {
-            if (at[i] <= time && !completed[i] && rt[i] < min_rt && rt[i] > 0) {
-                min_rt = rt[i];
-                shortest = i;
-                found = true;
+            if (arrivalTime[i] <= currentTime && !isCompleted[i]) {
+                if (remainingTime[i] < minRemainingTime) {
+                    minRemainingTime = remainingTime[i];
+                    shortestJobIndex = i;
+                }
             }
         }
 
-        if (!found) {
-            time++; // không có tiến trình đến, tăng thời gian
-            continue;
+        // Bước 2: Xử lý tiến trình được chọn
+        if (shortestJobIndex != -1) {
+            // Giảm thời gian còn lại của tiến trình được chọn đi 1 đơn vị
+            remainingTime[shortestJobIndex]--;
+
+            // Tăng thời gian hiện tại của CPU lên 1 đơn vị
+            currentTime++;
+
+            // Kiểm tra nếu tiến trình đã hoàn thành
+            if (remainingTime[shortestJobIndex] == 0) {
+                isCompleted[shortestJobIndex] = true;
+                completedProcesses++;
+
+                // Tính toán thời gian hoàn thành, lưu lại và chờ đợi
+                // Thời điểm hoàn thành chính là currentTime hiện tại
+                completionTime[shortestJobIndex] = currentTime;
+                turnaroundTime[shortestJobIndex] = completionTime[shortestJobIndex] - arrivalTime[shortestJobIndex];
+                waitingTime[shortestJobIndex] = turnaroundTime[shortestJobIndex] - burstTime[shortestJobIndex];
+
+                // Đảm bảo thời gian chờ không âm
+                if (waitingTime[shortestJobIndex] < 0) {
+                    waitingTime[shortestJobIndex] = 0;
+                }
+            }
+        } else {
+            // Nếu không có tiến trình nào sẵn sàng (CPU rảnh rỗi hoặc chưa có tiến trình nào đến)
+            // Tăng thời gian hiện tại để chờ đợi tiến trình tiếp theo đến
+            currentTime++;
         }
-
-        rt[shortest]--;
-        min_rt = rt[shortest]; // cập nhật min
-
-        if (min_rt == 0)
-            min_rt = 1e9;
-
-        if (rt[shortest] == 0) {
-            completed[shortest] = true;
-            complete++;
-            int finish_time = time + 1;
-            wt[shortest] = finish_time - bt[shortest] - at[shortest];
-            if (wt[shortest] < 0) wt[shortest] = 0;
-            tat[shortest] = wt[shortest] + bt[shortest];
-        }
-
-        time++;
     }
 
-    cout << "\nTien trinh\tAT\tBT\tWT\tTAT\n";
-    float avg_wt = 0, avg_tat = 0;
+    // --- In kết quả và tính toán thời gian trung bình ---
+    cout << "\n------------------------------------------------------------------------------------------------\n";
+    cout << left << setw(5) << "ID"
+              << setw(15) << "Arrival Time"
+              << setw(15) << "Burst Time"
+              << setw(18) << "Completion Time"
+              << setw(18) << "Turnaround Time"
+              << setw(15) << "Waiting Time" << endl;
+    cout << "------------------------------------------------------------------------------------------------\n";
+
+    float total_avg_wt = 0;
+    float total_avg_tat = 0;
+
+    // In kết quả theo thứ tự ID ban đầu
     for (int i = 0; i < n; i++) {
-        cout << "P" << pid[i] << "\t\t" << at[i] << "\t" << bt[i] << "\t" << wt[i] << "\t" << tat[i] << "\n";
-        avg_wt += wt[i];
-        avg_tat += tat[i];
+        cout << left << setw(5) << pid[i]
+                  << setw(15) << arrivalTime[i]
+                  << setw(15) << burstTime[i]
+                  << setw(18) << completionTime[i]
+                  << setw(18) << turnaroundTime[i]
+                  << setw(15) << waitingTime[i] << endl;
+        total_avg_wt += waitingTime[i];
+        total_avg_tat += turnaroundTime[i];
     }
+    cout << "------------------------------------------------------------------------------------------------\n";
 
-    cout << "Thoi gian cho trung binh: " << avg_wt / n << endl;
-    cout << "Thoi gian hoan tat trung binh: " << avg_tat / n << endl;
+    cout << fixed << setprecision(2); // Định dạng output cho số thập phân
+    cout << "Thoi gian cho trung binh: " << total_avg_wt / n << endl;
+    cout << "Thoi gian hoan tat trung binh: " << total_avg_tat / n << endl;
 
     return 0;
 }
