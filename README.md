@@ -1,4 +1,20 @@
 # HDH
+## Chương:
+- Chương 2:
+- Banker
+- các thuật toán
+  - FCTS: độc quyền
+  - RR: không độc quyền
+  - Short:
+    - SJF: độc quyền
+    - SRTF: không độc quyền
+- Chương 3:
+  - Cấp phát
+    - First fit
+    - Best fit
+    - Worst fit
+    - Last fit
+  - Đổi Logic sang vật lý và ngược lại
 ## THUẬT TOÁN MẪU:
 **FCFS**
 
