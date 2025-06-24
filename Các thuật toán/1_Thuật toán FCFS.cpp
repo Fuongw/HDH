@@ -1,113 +1,246 @@
-/* 
-  pid[] mảng lưu ID của từng tiến trình (1,2,3...)
-  bt[]_burst time : xử lý tiến trình
-  wt[]_waiting time: thời gian chờ
-  tat[] Tổng thời gian từ lúc bắt đầu đến khi hoàn thành tiến trình. 
-  Công thức: tat[i] = wt[i] + bt[i].
-  pr[]_priority Độ ưu tiên của tiến trình (số càng nhỏ → ưu tiên càng cao).
-  rt[]_remaining time: Thời gian còn lại chưa xử lý của tiến trình (dùng trong Round Robin).
-  time: thời gian tổng
-  done: số tiến trình đã hoàn thành
-  */
 #include <iostream>
-#include <iomanip> // Để định dạng output
-#include <algorithm> // Dùng cho std::max (đảm bảo currentTime không nhỏ hơn arrivalTime)
+#include <iomanip>
+#include <algorithm>
+#include <limits.h>
+#include <queue>
 
 using namespace std;
 
+const int MAX = 100;
+
+void FCFS(int n, int pid[], int arrival[], int burst[]);
+void SJF(int n, int pid[], int arrival[], int burst[]);
+void SRTF(int n, int pid[], int arrival[], int burst[]);
+void RoundRobin(int n, int pid[], int arrival[], int burst[], int quantum);
+
 int main() {
-    int n;
+    int n, choice, quantum;
+    int pid[MAX], arrival[MAX], burst[MAX];
+
     cout << "Nhap so tien trinh: ";
     cin >> n;
 
-    // Sử dụng mảng tĩnh, chấp nhận rủi ro VLA (Variable Length Array)
-    // trong C++ không chuẩn nếu trình biên dịch không hỗ trợ C99 mode.
-    // Đối với các dự án lớn hơn, nên dùng std::vector hoặc cấp phát động.
-    int pid[n];         // ID tiến trình
-    int arrivalTime[n]; // Thời gian đến
-    int burstTime[n];   // Thời gian xử lý
-    int completionTime[n]; // Thời gian hoàn thành
-    int turnaroundTime[n]; // Thời gian hoàn tất
-    int waitingTime[n]; // Thời gian chờ
-
-    // Nhập thông tin cho từng tiến trình
     for (int i = 0; i < n; i++) {
-        pid[i] = i + 1; // Gán ID từ 1 đến n
-        cout << "Nhap thoi gian den (Arrival Time) cua tien trinh " << pid[i] << ": ";
-        cin >> arrivalTime[i];
-        cout << "Nhap thoi gian xu ly (Burst Time) cua tien trinh " << pid[i] << ": ";
-        cin >> burstTime[i];
+        pid[i] = i + 1;
+        cout << "Tien trinh " << pid[i] << "\n";
+        cout << "  Thoi gian den: ";
+        cin >> arrival[i];
+        cout << "  Thoi gian xu ly: ";
+        cin >> burst[i];
     }
 
-    // --- Sắp xếp tiến trình theo thời gian đến (Arrival Time) cho FCFS ---
-    // Vì không dùng struct Process, chúng ta phải sắp xếp nhiều mảng cùng lúc.
-    // Đây là cách đơn giản nhất (Bubble Sort) để giữ code ngắn gọn.
-    // Với số lượng tiến trình lớn, nên dùng thuật toán sắp xếp hiệu quả hơn.
-    for (int i = 0; i < n - 1; i++) {
-        for (int j = 0; j < n - i - 1; j++) {
-            if (arrivalTime[j] > arrivalTime[j + 1]) {
-                // Hoán đổi Arrival Time
-                swap(arrivalTime[j], arrivalTime[j + 1]);
-                // Hoán đổi Burst Time
-                swap(burstTime[j], burstTime[j + 1]);
-                // Hoán đổi PID
+    cout << "\nChon thuat toan lap lich:\n";
+    cout << "1. FCFS\n2. SJF\n3. SRTF\n4. Round Robin\nLua chon: ";
+    cin >> choice;
+
+    switch (choice) {
+        case 1:
+            FCFS(n, pid, arrival, burst);
+            break;
+        case 2:
+            SJF(n, pid, arrival, burst);
+            break;
+        case 3:
+            SRTF(n, pid, arrival, burst);
+            break;
+        case 4:
+            cout << "Nhap quantum: ";
+            cin >> quantum;
+            RoundRobin(n, pid, arrival, burst, quantum);
+            break;
+        default:
+            cout << "Lua chon khong hop le!\n";
+    }
+
+    return 0;
+}
+
+void FCFS(int n, int pid[], int arrival[], int burst[]) {
+    int wt[MAX], tat[MAX], ct[MAX];
+    int currentTime = 0;
+    float avgWT = 0, avgTAT = 0;
+
+    // Sap xep theo thoi gian den
+    for (int i = 0; i < n - 1; i++)
+        for (int j = 0; j < n - i - 1; j++)
+            if (arrival[j] > arrival[j + 1]) {
+                swap(arrival[j], arrival[j + 1]);
+                swap(burst[j], burst[j + 1]);
                 swap(pid[j], pid[j + 1]);
-                // Nếu có các thuộc tính khác (priority, etc.), cũng cần hoán đổi
             }
+
+    for (int i = 0; i < n; i++) {
+        currentTime = max(currentTime, arrival[i]);
+        ct[i] = currentTime + burst[i];
+        tat[i] = ct[i] - arrival[i];
+        wt[i] = tat[i] - burst[i];
+        currentTime = ct[i];
+    }
+
+    cout << "\nFCFS Scheduling\n";
+    cout << left << setw(5) << "ID" << setw(15) << "Arrival" << setw(15)
+         << "Burst" << setw(15) << "Complete" << setw(15) << "Turnaround"
+         << setw(15) << "Waiting" << endl;
+
+    for (int i = 0; i < n; i++) {
+        cout << left << setw(5) << pid[i] << setw(15) << arrival[i]
+             << setw(15) << burst[i] << setw(15) << ct[i] << setw(15)
+             << tat[i] << setw(15) << wt[i] << endl;
+        avgWT += wt[i];
+        avgTAT += tat[i];
+    }
+    cout << "\nTrung binh cho: " << avgWT / n;
+    cout << "\nTrung binh hoan tat: " << avgTAT / n << endl;
+}
+
+void SJF(int n, int pid[], int arrival[], int burst[]) {
+    int wt[MAX], tat[MAX], ct[MAX];
+    int completed = 0, currentTime = 0;
+    bool done[MAX] = {};
+    float avgWT = 0, avgTAT = 0;
+
+    cout << "\nSJF Scheduling\n";
+
+    while (completed < n) {
+        int idx = -1, minBurst = INT_MAX;
+        for (int i = 0; i < n; i++) {
+            if (!done[i] && arrival[i] <= currentTime && burst[i] < minBurst) {
+                minBurst = burst[i];
+                idx = i;
+            }
+        }
+
+        if (idx == -1) {
+            currentTime++;
+            continue;
+        }
+
+        ct[idx] = currentTime + burst[idx];
+        tat[idx] = ct[idx] - arrival[idx];
+        wt[idx] = tat[idx] - burst[idx];
+        currentTime = ct[idx];
+        done[idx] = true;
+        completed++;
+    }
+
+    cout << left << setw(5) << "ID" << setw(15) << "Arrival" << setw(15)
+         << "Burst" << setw(15) << "Complete" << setw(15) << "Turnaround"
+         << setw(15) << "Waiting" << endl;
+
+    for (int i = 0; i < n; i++) {
+        cout << left << setw(5) << pid[i] << setw(15) << arrival[i]
+             << setw(15) << burst[i] << setw(15) << ct[i] << setw(15)
+             << tat[i] << setw(15) << wt[i] << endl;
+        avgWT += wt[i];
+        avgTAT += tat[i];
+    }
+    cout << "\nTrung binh cho: " << avgWT / n;
+    cout << "\nTrung binh hoan tat: " << avgTAT / n << endl;
+}
+
+void SRTF(int n, int pid[], int arrival[], int burst[]) {
+    int rt[MAX], wt[MAX] = {}, tat[MAX], ct[MAX];
+    for (int i = 0; i < n; i++) rt[i] = burst[i];
+    int completed = 0, currentTime = 0, minIdx;
+    float avgWT = 0, avgTAT = 0;
+
+    cout << "\nSRTF Scheduling\n";
+
+    while (completed < n) {
+        int minRT = INT_MAX;
+        minIdx = -1;
+        for (int i = 0; i < n; i++) {
+            if (arrival[i] <= currentTime && rt[i] > 0 && rt[i] < minRT) {
+                minRT = rt[i];
+                minIdx = i;
+            }
+        }
+        if (minIdx == -1) {
+            currentTime++;
+            continue;
+        }
+        rt[minIdx]--;
+        currentTime++;
+
+        if (rt[minIdx] == 0) {
+            completed++;
+            ct[minIdx] = currentTime;
+            tat[minIdx] = ct[minIdx] - arrival[minIdx];
+            wt[minIdx] = tat[minIdx] - burst[minIdx];
         }
     }
 
-    // --- Tính toán thời gian hoàn thành, chờ, và hoàn tất cho FCFS ---
-    int currentTime = 0;
+    cout << left << setw(5) << "ID" << setw(15) << "Arrival" << setw(15)
+         << "Burst" << setw(15) << "Complete" << setw(15) << "Turnaround"
+         << setw(15) << "Waiting" << endl;
 
     for (int i = 0; i < n; i++) {
-        // Đảm bảo rằng currentTime không nhỏ hơn thời gian đến của tiến trình.
-        // Nếu CPU rảnh trước khi tiến trình đến, CPU sẽ chờ.
-        currentTime = max(currentTime, arrivalTime[i]);
+        cout << left << setw(5) << pid[i] << setw(15) << arrival[i]
+             << setw(15) << burst[i] << setw(15) << ct[i] << setw(15)
+             << tat[i] << setw(15) << wt[i] << endl;
+        avgWT += wt[i];
+        avgTAT += tat[i];
+    }
+    cout << "\nTrung binh cho: " << avgWT / n;
+    cout << "\nTrung binh hoan tat: " << avgTAT / n << endl;
+}
 
-        // Thời gian hoàn thành
-        completionTime[i] = currentTime + burstTime[i];
+void RoundRobin(int n, int pid[], int arrival[], int burst[], int quantum) {
+    int rt[MAX], wt[MAX] = {}, tat[MAX], ct[MAX];
+    for (int i = 0; i < n; i++) rt[i] = burst[i];
+    int time = 0, done = 0;
+    queue<int> q;
+    bool visited[MAX] = {};
 
-        // Thời gian lưu lại trong hệ thống (Turnaround Time)
-        // Là tổng thời gian từ lúc đến cho đến khi hoàn thành.
-        turnaroundTime[i] = completionTime[i] - arrivalTime[i];
+    cout << "\nRound Robin Scheduling\n";
 
-        // Thời gian chờ đợi (Waiting Time)
-        // Là Turnaround Time trừ đi thời gian thực thi (Burst Time).
-        waitingTime[i] = turnaroundTime[i] - burstTime[i];
+    while (done < n) {
+        for (int i = 0; i < n; i++)
+            if (arrival[i] <= time && !visited[i]) {
+                q.push(i);
+                visited[i] = true;
+            }
 
-        // Cập nhật currentTime cho tiến trình tiếp theo
-        currentTime = completionTime[i];
+        if (q.empty()) {
+            time++;
+            continue;
+        }
+
+        int i = q.front();
+        q.pop();
+
+        int slice = min(rt[i], quantum);
+        rt[i] -= slice;
+        time += slice;
+
+        for (int j = 0; j < n; j++)
+            if (arrival[j] <= time && !visited[j]) {
+                q.push(j);
+                visited[j] = true;
+            }
+
+        if (rt[i] > 0)
+            q.push(i);
+        else {
+            ct[i] = time;
+            tat[i] = ct[i] - arrival[i];
+            wt[i] = tat[i] - burst[i];
+            done++;
+        }
     }
 
-    // --- In kết quả và tính toán thời gian trung bình ---
-    cout << "\n------------------------------------------------------------------\n";
-    cout << left << setw(5) << "ID"
-              << setw(15) << "Arrival Time"
-              << setw(15) << "Burst Time"
-              << setw(18) << "Completion Time"
-              << setw(18) << "Turnaround Time"
-              << setw(15) << "Waiting Time" << endl;
-    cout << "------------------------------------------------------------------\n";
-
-    float total_avg_wt = 0;
-    float total_avg_tat = 0;
+    float avgWT = 0, avgTAT = 0;
+    cout << left << setw(5) << "ID" << setw(15) << "Arrival" << setw(15)
+         << "Burst" << setw(15) << "Complete" << setw(15) << "Turnaround"
+         << setw(15) << "Waiting" << endl;
 
     for (int i = 0; i < n; i++) {
-        cout << left << setw(5) << pid[i]
-                  << setw(15) << arrivalTime[i]
-                  << setw(15) << burstTime[i]
-                  << setw(18) << completionTime[i]
-                  << setw(18) << turnaroundTime[i]
-                  << setw(15) << waitingTime[i] << endl;
-        total_avg_wt += waitingTime[i];
-        total_avg_tat += turnaroundTime[i];
+        cout << left << setw(5) << pid[i] << setw(15) << arrival[i]
+             << setw(15) << burst[i] << setw(15) << ct[i] << setw(15)
+             << tat[i] << setw(15) << wt[i] << endl;
+        avgWT += wt[i];
+        avgTAT += tat[i];
     }
-    cout << "------------------------------------------------------------------\n";
-
-    cout << fixed << setprecision(2);
-    cout << "Thoi gian cho trung binh: " << total_avg_wt / n << endl;
-    cout << "Thoi gian hoan tat trung binh: " << total_avg_tat / n << endl;
-
-    return 0;
+    cout << "\nTrung binh cho: " << avgWT / n;
+    cout << "\nTrung binh hoan tat: " << avgTAT / n << endl;
 }
