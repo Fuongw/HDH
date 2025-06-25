@@ -2,17 +2,18 @@
 #include <algorithm>
 #include <vector>
 #include <cmath>
+#include <string>
 using namespace std;
 
-int disk_size = 200; // Mặc định miền đĩa: 0 đến 199
+int disk_size; // s? đư?c nh?p t? ngư?i dùng
 
 void FIFO(vector<int> requests, int head) {
     int distance = 0;
     cout << "Truy cap theo thu tu: ";
-    for (int r : requests) {
-        cout << r << " ";
-        distance += abs(r - head);
-        head = r;
+    for (int i = 0; i < requests.size(); i++) {
+        cout << requests[i] << " ";
+        distance += abs(requests[i] - head);
+        head = requests[i];
     }
     cout << "\nTong quang duong: " << distance << endl;
 }
@@ -45,9 +46,9 @@ void SCAN(vector<int> requests, int head, string direction, int include_boundari
         else right.push_back(disk_size - 1);
     }
 
-    for (int r : requests) {
-        if (r < head) left.push_back(r);
-        else right.push_back(r);
+    for (int i = 0; i < requests.size(); i++) {
+        if (requests[i] < head) left.push_back(requests[i]);
+        else right.push_back(requests[i]);
     }
     sort(left.begin(), left.end());
     sort(right.begin(), right.end());
@@ -83,9 +84,9 @@ void LOOK(vector<int> requests, int head, string direction) {
     int distance = 0;
     vector<int> left, right;
 
-    for (int r : requests) {
-        if (r < head) left.push_back(r);
-        else right.push_back(r);
+    for (int i = 0; i < requests.size(); i++) {
+        if (requests[i] < head) left.push_back(requests[i]);
+        else right.push_back(requests[i]);
     }
     sort(left.begin(), left.end());
     sort(right.begin(), right.end());
@@ -125,9 +126,9 @@ void CSCAN(vector<int> requests, int head, string direction, int include_boundar
         right.push_back(disk_size - 1);
     }
 
-    for (int r : requests) {
-        if (r < head) left.push_back(r);
-        else right.push_back(r);
+    for (int i = 0; i < requests.size(); i++) {
+        if (requests[i] < head) left.push_back(requests[i]);
+        else right.push_back(requests[i]);
     }
     sort(left.begin(), left.end());
     sort(right.begin(), right.end());
@@ -139,8 +140,8 @@ void CSCAN(vector<int> requests, int head, string direction, int include_boundar
             distance += abs(head - left[i]);
             head = left[i];
         }
+        distance += abs(head - (disk_size - 1));
         head = disk_size - 1;
-        distance += abs(0 - head);
         for (int i = right.size() - 1; i >= 0; --i) {
             cout << right[i] << " ";
             distance += abs(head - right[i]);
@@ -152,8 +153,8 @@ void CSCAN(vector<int> requests, int head, string direction, int include_boundar
             distance += abs(head - right[i]);
             head = right[i];
         }
+        distance += abs(head - 0);
         head = 0;
-        distance += abs(disk_size - 1 - head);
         for (int i = 0; i < left.size(); ++i) {
             cout << left[i] << " ";
             distance += abs(head - left[i]);
@@ -167,9 +168,9 @@ void CLOOK(vector<int> requests, int head, string direction) {
     int distance = 0;
     vector<int> left, right;
 
-    for (int r : requests) {
-        if (r < head) left.push_back(r);
-        else right.push_back(r);
+    for (int i = 0; i < requests.size(); i++) {
+        if (requests[i] < head) left.push_back(requests[i]);
+        else right.push_back(requests[i]);
     }
     sort(left.begin(), left.end());
     sort(right.begin(), right.end());
@@ -182,11 +183,11 @@ void CLOOK(vector<int> requests, int head, string direction) {
             head = left[i];
         }
         if (!right.empty()) {
-            distance += abs(head - right.back());
-            head = right.back();
+            distance += abs(head - right[right.size() - 1]);
+            head = right[right.size() - 1];
             for (int i = right.size() - 1; i >= 0; --i) {
                 cout << right[i] << " ";
-                if (i != (int)right.size() - 1)
+                if (i != right.size() - 1)
                     distance += abs(head - right[i]);
                 head = right[i];
             }
@@ -213,6 +214,10 @@ void CLOOK(vector<int> requests, int head, string direction) {
 
 int main() {
     int n, head;
+    
+    cout << "Nhap kich thuoc dia (VD: 200): ";
+    cin >> disk_size;
+
     cout << "Nhap so luong yeu cau: ";
     cin >> n;
     vector<int> requests(n);
@@ -222,9 +227,8 @@ int main() {
     cout << "Nhap vi tri dau doc ban dau: ";
     cin >> head;
 
-    // Hỏi người dùng có muốn kiểm tra miền (0...199) hay không
     int check_range;
-    cout << "Ban co muon kiem tra cac vi tri co nam trong mien [0..." << disk_size - 1 << "] khong? (1 = Co, 0 = Khong): ";
+    cout << "Kiem tra cac vi tri co nam trong mien [0.." << disk_size - 1 << "] khong? (1 = Co, 0 = Khong): ";
     cin >> check_range;
 
     if (check_range) {
@@ -250,7 +254,7 @@ int main() {
         cout << "Nhap huong (trai/phai): ";
         cin >> direction;
         if (choice == 3 || choice == 5) {
-            cout << "Tinh ca bien dia 0 va 199? (1 = Co, 0 = Khong): ";
+            cout << "Tinh ca bien dia 0 va " << disk_size - 1 << "? (1 = Co, 0 = Khong): ";
             cin >> include_boundaries;
         }
     }
